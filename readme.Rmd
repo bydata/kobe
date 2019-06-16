@@ -1,0 +1,28 @@
+---
+title: " Kobe Bryant Shot Selection Kaggle Challenge"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The pipeline for analyzing Kobe Bryant's shot selection consists of several R scripts which have to be executed in the following order.
+
+## Load and prepare dataset
+
+```{r results='hide'}
+source("R/prepare_data.R")
+```
+## Visual Exploratory Data Analysis
+
+```{r}
+source("R/exploration.R")
+```
+
+## Modelling
+
+```{r}
+#source("R/modelling.R")
+```
+

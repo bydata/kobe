@@ -5,13 +5,13 @@ data_path <- "input/kobe-bryant-shot-selection/"
 file_name <- "data.csv"
 file_path <- str_c(data_path, file_name)
 
-shots <- read_csv(file_path)
+shots <- read_csv(file_path)  %>%
+  mutate_if(is.character, factor)
 
 
 # create test, validation, and test set
 
 set.seed(1909)
-
 
 shots_test <- shots %>%
   filter(is.na(shot_made_flag))
@@ -48,11 +48,10 @@ generate_features <- function(df) {
       crunch_time_quarter = minutes_remaining < 2,
       crunch_time_game = minutes_remaining < 2 & period == 4,
       remaining_seconds_period = minutes_remaining * 60 + seconds_remaining,
-      remaining_seconds_game = (5 - period) * minutes_remaining * 60 + seconds_remaining,
+      remaining_seconds_game = (5 - period) * minutes_remaining * 60 + seconds_remaining, # TODO: consider overtime!
       period = factor(period),
       opponent_season = str_c(opponent, season, sep = "-")
-    ) %>%
-    mutate_if(is.character, factor)
+    )
   df
 }
 
@@ -63,10 +62,16 @@ drop_variables <- function(df) {
   df
 }
 
+prepare_df <- function(df) {
+  df <- generate_features(df) %>%
+    drop_variables()
+  df
+}
 
-shots_train <- generate_features(shots_train) %>% drop_variables()
-shots_validation <- generate_features(shots_validation) %>% drop_variables()
-shots_test <- generate_features(shots_test) %>% drop_variables()
+
+shots_train <- prepare_df(shots_train)
+shots_validation <- prepare_df(shots_validation) 
+shots_test <- prepare_df(shots_test) 
 
 
 
@@ -77,7 +82,7 @@ shots_test <- generate_features(shots_test) %>% drop_variables()
 # location 
 shots_train %>%
   ggplot(aes(loc_x, loc_y, col = combined_shot_type)) +
-  geom_point(alpha = 0.8, size = 1) +
+  geom_point(alpha = 0.5, size = 0.1) +
   theme_bw() + 
   theme(
     axis.text = element_blank(),
@@ -85,11 +90,11 @@ shots_train %>%
     ) +
   scale_color_tableau() +
   labs(title = "", x = NULL, y = NULL, col = "Combined shot type") +
-  facet_wrap(~ shot_made_fct)
+  facet_wrap(vars(shot_made_flag))
 
-# shot type
+# combined shot type
 shots_train %>%
-  ggplot(aes(reorder(combined_shot_type, shot_made_flag), fill = shot_made_flag)) +
+  ggplot(aes(combined_shot_type, fill = shot_made_flag)) +
   geom_bar(position = "fill") +
   scale_y_continuous(labels = scales::percent) +
   coord_flip() +
@@ -100,8 +105,28 @@ shots_train %>%
   ) +
   scale_fill_tableau() +
   labs(
-    title = "Kobe's legendary bank shots", subtitle = "Shot success by shot type", 
+    title = "Kobe's legendary bank shots", subtitle = "Shot success by combined shot type", 
     x = NULL, y = NULL, fill = "Shot success")
+
+# action type
+shots_train %>%
+  nest(-action_type) %>%
+  mutate(fgp = map_dbl(data, ~mean(.$shot_made_flag == "made"))) %>%
+  unnest() %>%
+  ggplot(aes(reorder(action_type, fgp), fill = shot_made_flag)) +
+  geom_bar(position = "fill", aes(alpha = ..count..)) +
+  scale_y_continuous(labels = scales::percent) +
+  coord_flip() +
+  theme_bw() + 
+  theme(
+    axis.ticks = element_blank(),
+    panel.grid = element_blank()
+  ) +
+  scale_fill_tableau() +
+  labs(
+    title = "Kobe's legendary bank shots", subtitle = "Shot success by action type", 
+    x = NULL, y = NULL, fill = "Shot success")
+
 
 # shot zone
 shots_train %>%
@@ -118,4 +143,20 @@ shots_train %>%
   labs(
     title = "", subtitle = "Shot success by shot zone", 
     x = NULL, y = NULL, fill = "Shot success")
+
+# field goal percentage by seconds remaining in quarter
+shots_train %>%
+  mutate(period = factor(ifelse(period %in% c("5", "6", "7"), "OT", period))) %>%
+  group_by(period, remaining_seconds_period) %>%
+  summarize(
+    fgp = mean(shot_made_flag == "made"),
+    fga = n()) %>%
+  ungroup() %>%
+  filter(fga > 2) %>%
+  ggplot(aes(remaining_seconds_period, fgp)) +
+  geom_col() +
+  scale_x_reverse() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_hc() +
+  facet_wrap(vars(period))
 
