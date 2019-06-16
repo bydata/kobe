@@ -1,3 +1,6 @@
+Kobe Bryant Shot Selection Kaggle Challenge
+===========================================
+
 The pipeline for analyzing Kobe Bryant’s shot selection consists of
 several R scripts which have to be executed in the following order.
 
