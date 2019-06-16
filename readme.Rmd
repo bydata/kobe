@@ -1,6 +1,7 @@
 ---
-title: " Kobe Bryant Shot Selection Kaggle Challenge"
-output: html_document
+title: "Kobe Bryant Shot Selection Kaggle Challenge"
+author: Ansgar Wolsing
+output: md_document
 ---
 
 ```{r setup, include=FALSE}
